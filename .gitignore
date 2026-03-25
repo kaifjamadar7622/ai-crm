@@ -23,7 +23,18 @@ wheels/
 venv/
 ENV/
 env/
+
+# Environment & Secrets (NEVER COMMIT THESE)
 .env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+credentials.json
+secrets.json
+GROQ_API_KEY
+API_KEY
 
 # Node
 node_modules/
@@ -45,3 +56,9 @@ dist/
 
 # Logs
 *.log
+
+# Sensitive
+.git-credentials
+.ssh/
+*.bak
+*~
