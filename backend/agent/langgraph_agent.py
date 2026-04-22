@@ -8,7 +8,9 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import END, StateGraph
 
 from tools.tools import (
+    compliance_check,
     edit_interaction,
+    extract_sentiment,
     get_hcp_info,
     log_interaction,
     suggest_followup,
@@ -31,6 +33,7 @@ class AgentState(TypedDict, total=False):
         "get_hcp_info",
         "summarize_interaction",
         "suggest_followup",
+        "compliance_check",
     ]
     payload: Dict[str, Any]
     result: Dict[str, Any]
@@ -63,6 +66,9 @@ def _extract_payload(user_input: str) -> Dict[str, Any]:
         "new_notes": "",
         "name": "",
         "text": user_input,
+        "topics": [],
+        "follow_up": "",
+        "outcome": "",
     }
 
     if llm is None:
@@ -82,6 +88,9 @@ Return JSON with keys:
 - new_notes (string)
 - name (string)
 - text (string)
+- topics (array of strings)
+- follow_up (string)
+- outcome (string)
 """
     response = llm.invoke([HumanMessage(content=prompt)])
     return _safe_json(getattr(response, "content", ""), fallback)
@@ -97,6 +106,8 @@ def _select_action(user_input: str, payload: Dict[str, Any]) -> str:
         return "summarize_interaction"
     if "follow" in text or "next step" in text:
         return "suggest_followup"
+    if "compliance" in text or "policy" in text or "risk" in text:
+        return "compliance_check"
     if "hcp" in text or "doctor" in text or "specialization" in text:
         return "get_hcp_info"
     if "log" in text or payload.get("hcp_name"):
@@ -113,6 +124,7 @@ Allowed actions only:
 - get_hcp_info
 - summarize_interaction
 - suggest_followup
+- compliance_check
 
 User input: {user_input}
 Payload: {json.dumps(payload)}
@@ -128,6 +140,7 @@ Return strict JSON: {{"action": "one_of_allowed_actions"}}
         "get_hcp_info",
         "summarize_interaction",
         "suggest_followup",
+        "compliance_check",
     }:
         return "summarize_interaction"
     return action
@@ -175,8 +188,17 @@ def execute_node(state: AgentState) -> AgentState:
         result = get_hcp_info(name)
     elif action == "suggest_followup":
         result = suggest_followup(payload.get("text", state.get("user_input", "")))
+    elif action == "compliance_check":
+        result = compliance_check(payload.get("text", state.get("user_input", "")))
     else:
         result = summarize_interaction(payload.get("text", state.get("user_input", "")))
+
+    sentiment = extract_sentiment(payload.get("text", state.get("user_input", "")))
+    result = {
+        **(result or {}),
+        "sentiment": sentiment.get("sentiment", "neutral"),
+        "sentiment_score": sentiment.get("score", 0),
+    }
 
     return {"result": result}
 

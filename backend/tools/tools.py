@@ -66,3 +66,47 @@ def summarize_interaction(text):
 # ✅ 5. Suggest Follow-up
 def suggest_followup(text):
     return {"suggestion": "Schedule next meeting in 2 weeks"}
+
+
+# ✅ 6. Compliance Check
+def compliance_check(text):
+    text_l = (text or "").lower()
+    flags = []
+
+    if any(word in text_l for word in ["patient name", "mrn", "phone", "email", "address"]):
+        flags.append("Possible PII/PHI in note")
+
+    if any(word in text_l for word in ["guarantee", "cure", "no side effects", "100% safe"]):
+        flags.append("Potential non-compliant medical claim")
+
+    if any(word in text_l for word in ["off-label", "unapproved use"]):
+        flags.append("Potential off-label discussion")
+
+    return {
+        "status": "review_required" if flags else "clear",
+        "flags": flags,
+        "message": "Compliance review suggested before logging." if flags else "No obvious compliance flags detected.",
+    }
+
+
+# ✅ 7. Sentiment Extraction
+def extract_sentiment(text):
+    text_l = (text or "").lower()
+
+    positive_hits = ["interested", "positive", "keen", "good", "promising", "agreed", "scheduled"]
+    negative_hits = ["not interested", "concern", "declined", "negative", "skeptical", "no interest", "resistant"]
+
+    pos = sum(1 for token in positive_hits if token in text_l)
+    neg = sum(1 for token in negative_hits if token in text_l)
+
+    if pos > neg:
+        label = "positive"
+    elif neg > pos:
+        label = "negative"
+    else:
+        label = "neutral"
+
+    return {
+        "sentiment": label,
+        "score": pos - neg,
+    }

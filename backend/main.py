@@ -1,11 +1,13 @@
+from typing import Any, Dict
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
 from agent.langgraph_agent import run_agent
 from tools.tools import log_interaction
 
-
-app = FastAPI()
+app = FastAPI(title="AI-First CRM Backend")
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,26 +17,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class Interaction(BaseModel):
-    text: str
+
+class ChatRequest(BaseModel):
+    message: str = ""
+    text: str = ""
 
 
-class InteractionLog(BaseModel):
-    hcp_name: str
-    interaction_type: str
+class InteractionRequest(BaseModel):
+    hcp_name: str = ""
+    interaction_type: str = "general"
     notes: str = ""
 
+
 @app.get("/")
-def home():
-    return {"message": "Backend running 🚀"}
+def health() -> Dict[str, str]:
+    return {"status": "ok"}
+
 
 @app.post("/chat")
-def chat(interaction: Interaction):
-    result = run_agent(interaction.text)
-    return {"response": result}
+def chat(payload: ChatRequest) -> Dict[str, Any]:
+    user_input = payload.message or payload.text
+    return run_agent(user_input)
 
 
 @app.post("/interactions/log")
-def create_interaction(interaction: InteractionLog):
-    result = log_interaction(interaction.model_dump())
-    return {"response": result}
+def interactions_log(payload: InteractionRequest) -> Dict[str, Any]:
+    return log_interaction(payload.model_dump())

@@ -57,6 +57,11 @@ dist/
 # Logs
 *.log
 
+# Local recordings and media artifacts
+recording.conf
+*.m4a
+*.mp4
+
 # Sensitive
 .git-credentials
 .ssh/
